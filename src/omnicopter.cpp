@@ -7,10 +7,11 @@
 #include <vector>
 #include <cmath>
 
-#define LOOP_RATE 1000
+#define LOOP_RATE 200
 #define K_F 6.8834e-11
 #define K_M 6.8834e-12 //wild guess
 #define PI 3.141592653589
+#define FREEZE_POSITION true
 
 double motor1_cmd_usec = 0;
 double motor2_cmd_usec = 0;
@@ -26,7 +27,7 @@ Eigen::Quaterniond q(1,0,0,0); //Attitude quaternion (w,x,y,z)
 Eigen::Vector3d w(0,0,0); //Angular rates
 Eigen::Vector3d v(0,0,0); //Velocity
 
-const Eigen::Matrix3d J = Eigen::Matrix3d::Identity(); //Inertia matrix
+const Eigen::Matrix3d J = 0.5*Eigen::Matrix3d::Identity(); //Inertia matrix
 const double m = 0.5; //mass [kg]
 const Eigen::Vector3d g(0,0,9.81);
 
@@ -84,7 +85,7 @@ double pwmToTorque(double pwm){
 		// and quadratic speed to torque relationship
 		double max_rpm = 38000;
 		double max_w = max_rpm*2*PI;
-		double w = max_w*(pwm-1500)/5000;
+		double w = max_w*(pwm-1500)/500;
 		return K_M*w*w;
 	}
 }
@@ -132,7 +133,7 @@ Eigen::Vector3d getBodyTorque(){
 void initializeVisualization(){
 	//Draw a box
 	visualization_msgs::Marker marker;
-	marker.header.frame_id = "base_link";
+	marker.header.frame_id = "world";
 	marker.header.stamp = ros::Time::now();
 	marker.ns = "omnicopter";
 	marker.id = 0;
@@ -145,20 +146,28 @@ void initializeVisualization(){
   	marker.pose.orientation.y = q.y();
   	marker.pose.orientation.z = q.z();
   	marker.pose.orientation.w = q.w();
-  	marker.scale.x = 0.3;
-  	marker.scale.y = 0.3;
-  	marker.scale.z = 0.3;
-  	marker.color.a = 1.0; // Don't forget to set the alpha!
+  	marker.scale.x = 0.4;
+  	marker.scale.y = 0.4;
+  	marker.scale.z = 0.4;
+  	marker.color.a = 0.5; // Don't forget to set the alpha!
   	marker.color.r = 0.0;
   	marker.color.g = 1.0;
   	marker.color.b = 0.0;
   	visuals.markers.push_back(marker);
+
 }
 
 void publishVisualization(){
 	// Update motor forces and torques
 	for (int i = 0; i < visuals.markers.size(); i++){
 		visuals.markers[i].header.stamp = ros::Time::now();
+		visuals.markers[i].pose.position.x = p(0);
+	   	visuals.markers[i].pose.position.y = p(1);
+	  	visuals.markers[i].pose.position.z = p(2);
+	  	visuals.markers[i].pose.orientation.x = q.x();
+	  	visuals.markers[i].pose.orientation.y = q.y();
+	  	visuals.markers[i].pose.orientation.z = q.z();
+	  	visuals.markers[i].pose.orientation.w = q.w();
 	}
 
 	vis_pub.publish(visuals);
@@ -211,6 +220,9 @@ int main(int argc, char **argv){
 	Eigen::Vector3d acc(0,0,0); //linear acceleration
 	Eigen::Vector3d alpha(0,0,0); //angular acceleration
 
+	initializeVisualization();
+	unsigned int visualization_counter = 0;
+
 	while(ros::ok()) {
 
 		ros::spinOnce();
@@ -220,13 +232,16 @@ int main(int argc, char **argv){
 		t = getBodyTorque();
 
 		// Kinetics
-		acc = (1/m)*R*f ;//- g;
+		acc = (1/m)*R*f - g;
 		alpha = J.inverse()*(t-w.cross(J*w));
 
 		// Kinematics
 		// Linear
 		v += acc*dt;
-		p += v*dt;
+		if(!FREEZE_POSITION){
+			p += v*dt;	
+		}
+		
 
 		// Angular
 		w += alpha*dt; 
@@ -240,7 +255,11 @@ int main(int argc, char **argv){
 
 
 		publishPose();
-		publishVisualization(); //Maybe do this at fixed 60Hz?
+		if(visualization_counter > 10){
+			publishVisualization();
+			visualization_counter = 0;
+		}
+		visualization_counter++;
 		loop_rate.sleep();
 	}
 

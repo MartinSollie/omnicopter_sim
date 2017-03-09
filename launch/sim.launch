@@ -6,4 +6,7 @@
     <param name="autorepeat_rate" value="200"/>
   </node>
 
+  <node name="omnicopter" pkg="omnicopter_sim" type="omnicopter" output="screen" />
+  <node name="rc_mapping" pkg="omnicopter_sim" type="rc_mapping" output="screen" />
+
 </launch>
