@@ -4,7 +4,7 @@
 #include <visualization_msgs/MarkerArray.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <Eigen/Geometry>
-#include <vector.h>
+#include <vector>
 #include <cmath>
 
 #define LOOP_RATE 1000
@@ -26,7 +26,7 @@ Eigen::Quaterniond q(1,0,0,0); //Attitude quaternion (w,x,y,z)
 Eigen::Vector3d w(0,0,0); //Angular rates
 Eigen::Vector3d v(0,0,0); //Velocity
 
-const Eigen::Matrix3d J(1,1,1); //Inertia matrix
+const Eigen::Matrix3d J = Eigen::Matrix3d::Identity(); //Inertia matrix
 const double m = 0.5; //mass [kg]
 const Eigen::Vector3d g(0,0,9.81);
 
@@ -35,16 +35,18 @@ visualization_msgs::MarkerArray visuals;
 Eigen::MatrixXd X(3,8);
 Eigen::MatrixXd P(3,8);
 
+ros::Publisher vis_pub, pose_pub;
 
-void commandCallback(const omnicopter_ros::MotorCommand& input) {
-	motor1_force_cmd = input.motor1_usec;
-	motor2_force_cmd = input.motor2_usec;
-	motor3_force_cmd = input.motor3_usec;
-	motor4_force_cmd = input.motor4_usec;
-	motor5_force_cmd = input.motor5_usec;
-	motor6_force_cmd = input.motor6_usec;
-	motor7_force_cmd = input.motor7_usec;
-	motor8_force_cmd = input.motor8_usec;
+
+void commandCallback(const omnicopter_sim::MotorCommand& input) {
+	motor1_cmd_usec = input.motor1_usec;
+	motor2_cmd_usec = input.motor2_usec;
+	motor3_cmd_usec = input.motor3_usec;
+	motor4_cmd_usec = input.motor4_usec;
+	motor5_cmd_usec = input.motor5_usec;
+	motor6_cmd_usec = input.motor6_usec;
+	motor7_cmd_usec = input.motor7_usec;
+	motor8_cmd_usec = input.motor8_usec;
 }
 
 double pwmToForce(double pwm){
@@ -52,7 +54,7 @@ double pwmToForce(double pwm){
 		return 0;
 	}
 	else if (pwm > 2000){
-		ROS_ERROR("Simulation PWM input > 2000")
+		ROS_ERROR("Simulation PWM input > 2000");
 		return 0;
 	}
 	else{
@@ -61,9 +63,9 @@ double pwmToForce(double pwm){
 		// For now just assume linear pwm to speed relationship
 		// and quadratic speed to force relationship
 		double max_rpm = 38000;
-		double max_w = max_rpm*2*pi;
+		double max_w = max_rpm*2*PI;
 		double w = max_w*(pwm-1500)/500;
-		return K_F*w^2;
+		return K_F*w*w;
 	}
 }
 
@@ -72,7 +74,7 @@ double pwmToTorque(double pwm){
 		return 0;
 	}
 	else if (pwm > 2000){
-		ROS_ERROR("Simulation PWM input > 2000")
+		ROS_ERROR("Simulation PWM input > 2000");
 		return 0;
 	}
 	else{
@@ -81,9 +83,9 @@ double pwmToTorque(double pwm){
 		// For now just assume linear pwm to speed relationship
 		// and quadratic speed to torque relationship
 		double max_rpm = 38000;
-		double max_w = max_rpm*2*pi;
+		double max_w = max_rpm*2*PI;
 		double w = max_w*(pwm-1500)/5000;
-		return K_M*w^2;
+		return K_M*w*w;
 	}
 }
 
@@ -110,7 +112,7 @@ Eigen::VectorXd getMotorTorques(){
 	t(5) = pwmToTorque(motor6_cmd_usec);
 	t(6) = pwmToTorque(motor7_cmd_usec);
 	t(7) = pwmToTorque(motor8_cmd_usec);
-	return f;
+	return t;
 }
 
 Eigen::Vector3d getBodyForce(){
@@ -118,7 +120,13 @@ Eigen::Vector3d getBodyForce(){
 }
 
 Eigen::Vector3d getBodyTorque(){
-	return (P.cross(X))*getMotorForces() + X*getMotorTorques();
+	Eigen::MatrixXd P_cross_X(3,8);
+	for (int i = 0; i < 8; i++){
+		Eigen::Vector3d P_col = P.col(i);
+		Eigen::Vector3d X_col = X.col(i);
+		P_cross_X.col(i) = P_col.cross(X_col);
+	}
+	return P_cross_X*getMotorForces() + X*getMotorTorques();
 }
 
 void initializeVisualization(){
@@ -133,10 +141,10 @@ void initializeVisualization(){
 	marker.pose.position.x = p(0);
    	marker.pose.position.y = p(1);
   	marker.pose.position.z = p(2);
-  	marker.pose.orientation.x = q(0);
-  	marker.pose.orientation.y = q(1);
-  	marker.pose.orientation.z = q(2);
-  	marker.pose.orientation.w = q(3);
+  	marker.pose.orientation.x = q.x();
+  	marker.pose.orientation.y = q.y();
+  	marker.pose.orientation.z = q.z();
+  	marker.pose.orientation.w = q.w();
   	marker.scale.x = 0.3;
   	marker.scale.y = 0.3;
   	marker.scale.z = 0.3;
@@ -144,13 +152,13 @@ void initializeVisualization(){
   	marker.color.r = 0.0;
   	marker.color.g = 1.0;
   	marker.color.b = 0.0;
-  	visuals.push_back(marker);
+  	visuals.markers.push_back(marker);
 }
 
 void publishVisualization(){
 	// Update motor forces and torques
-	for (int i = 0; i < visuals.size(); i++){
-		visuals[i].header.stamp = ros::Time::now();
+	for (int i = 0; i < visuals.markers.size(); i++){
+		visuals.markers[i].header.stamp = ros::Time::now();
 	}
 
 	vis_pub.publish(visuals);
@@ -164,20 +172,20 @@ void publishPose(){
 	msg.pose.position.x = p(0);
 	msg.pose.position.y = p(1);
 	msg.pose.position.z = p(2);
-	msg.pose.orientation.x = q(0);
-	msg.pose.orientation.y = q(1);
-	msg.pose.orientation.z = q(2);
-	msg.pose.orientation.w = q(3);
+	msg.pose.orientation.x = q.x();
+	msg.pose.orientation.y = q.y();
+	msg.pose.orientation.z = q.z();
+	msg.pose.orientation.w = q.w();
 	pose_pub.publish(msg);
 }
 
 
 int main(int argc, char **argv){
 	ros::init(argc, argv, "omnicopter");
-	ros::NodeHandle nh();
+	ros::NodeHandle nh;
 
-	ros::Publisher pose_pub = nh.advertise<geometry_msgs::PoseStamped>("pose", 1);
-	ros::Publisher vis_pub = nh.advertise<visualization_msgs::MarkerArray>( "visualization_marker_array", 0 );
+	pose_pub = nh.advertise<geometry_msgs::PoseStamped>("pose", 1);
+	vis_pub = nh.advertise<visualization_msgs::MarkerArray>( "visualization_marker_array", 0 );
 
 	ros::Subscriber motor_cmd_sub = nh.subscribe("motor_commands", 1, commandCallback); 
 
@@ -200,30 +208,34 @@ int main(int argc, char **argv){
 	double dt = 1/LOOP_RATE;
 	Eigen::Vector3d f(0,0,0); //total force in BODY frame
 	Eigen::Vector3d t(0,0,0); //total torque in BODY frame
-	Eigen::Vector3d a(0,0,0); //linear acceleration
+	Eigen::Vector3d acc(0,0,0); //linear acceleration
 	Eigen::Vector3d alpha(0,0,0); //angular acceleration
 
 	while(ros::ok()) {
 
 		ros::spinOnce();
 
-		Matrix3d R = q.normalized().toRotationMatrix();
+		Eigen::Matrix3d R = q.normalized().toRotationMatrix();
 		f = getBodyForce();
 		t = getBodyTorque();
 
 		// Kinetics
-		a = (1/m)*R*f - g;
+		acc = (1/m)*R*f ;//- g;
 		alpha = J.inverse()*(t-w.cross(J*w));
 
 		// Kinematics
 		// Linear
-		v += a*dt;
+		v += acc*dt;
 		p += v*dt;
 
 		// Angular
 		w += alpha*dt; 
-		Eigen::Quaterniond w_q(0,w(0),w(1),w(2));
-		q += 0.5*q*w_q*dt;
+		Eigen::Quaterniond w_q(0,w(0)*0.5*dt,w(1)*0.5*dt,w(2)*0.5*dt);
+		Eigen::Quaterniond q_dot = q*w_q;
+		q.x() += q_dot.x();
+		q.y() += q_dot.y();
+		q.z() += q_dot.z();
+		q.w() += q_dot.w();
 		q.normalize();
 
 
