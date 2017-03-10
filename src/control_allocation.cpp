@@ -46,6 +46,9 @@ Eigen::MatrixXd M_pinv(6,8);
 ros::Publisher motor_pub;
 
 double motor_force_to_usec(double f){
+	if(f < 0){
+		return -500/(2*PI*38000)*sqrt(-f/K_F)+1500;
+	}
 	return 500/(2*PI*38000)*sqrt(f/K_F)+1500;
 }
 
@@ -76,13 +79,14 @@ void forceCallback(const geometry_msgs::Vector3Stamped& input) {
 	msg.motor6_usec = motor_force_to_usec(motor_forces(5));
 	msg.motor7_usec = motor_force_to_usec(motor_forces(6));
 	msg.motor8_usec = motor_force_to_usec(motor_forces(7));
-	motor_pub.publish(msg);
 
+	motor_pub.publish(msg);
 
 
 }
 
 void torqueCallback(const geometry_msgs::Vector3Stamped& input) {
+	
 	torque_setpoint(0) = input.vector.x;
 	torque_setpoint(1) = input.vector.y;
 	torque_setpoint(2) = input.vector.z;
@@ -91,9 +95,9 @@ void torqueCallback(const geometry_msgs::Vector3Stamped& input) {
 	}
 	Eigen::VectorXd wrench(6);
 	wrench = Eigen::VectorXd::Zero(6);
-	wrench.block(3,1,3,0) = torque_setpoint;
+	wrench.block<3,1>(3,0) = torque_setpoint;
 	if(force_valid){
-		wrench.block(3,1,0,0) = force_setpoint;
+		wrench.block<3,1>(0,0) = force_setpoint;
 	}
 
 	Eigen::VectorXd motor_forces(6);
@@ -110,6 +114,7 @@ void torqueCallback(const geometry_msgs::Vector3Stamped& input) {
 	msg.motor7_usec = motor_force_to_usec(motor_forces(6));
 	msg.motor8_usec = motor_force_to_usec(motor_forces(7));
 	motor_pub.publish(msg);
+	
 
 }
 
@@ -130,9 +135,10 @@ int main(int argc, char **argv){
 
 	double a = 0.5 + 1.0/sqrt(12);
 	double b = 0.5- 1.0/sqrt(12);
-	double c = sqrt(3);
+	double c = 1.0/sqrt(3);
+	
 	X << -a, b,-b, a, a,-b, b,-a,
-		  b, a,-b,-a,-a,-b, a, b,
+		  b, a,-a,-b,-b,-a, a, b,
 		  c,-c,-c, c, c,-c,-c, c;
 
 	P << 1,-1, 1,-1, 1,-1, 1,-1,
@@ -148,10 +154,12 @@ int main(int argc, char **argv){
 		P_cross_X.col(i) = P_col.cross(X_col);
 	}
 
-	M.block(3,8,0,0) = X;
-	M.block(3,8,3,0) = P_cross_X;
 
-	M_pinv = M.transpose()*(M*M.transpose()).inverse();
+	M.block<3,8>(0,0) = X;
+	M.block<3,8>(3,0) = P_cross_X;
+	
+	M_pinv = M.transpose()*((M*M.transpose()).inverse());
+	
 
 	ros::spin();
 

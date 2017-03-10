@@ -10,5 +10,6 @@
   <node name="omnicopter" pkg="omnicopter_sim" type="omnicopter" output="screen" />
   <node name="rc_mapping" pkg="omnicopter_sim" type="rc_mapping" output="screen" />
   <node name="visualization" pkg="omnicopter_sim" type="visualization" output="screen" />
+  <node name="control_allocation" pkg="omnicopter_sim" type="control_allocation" output="screen" />
 
 </launch>

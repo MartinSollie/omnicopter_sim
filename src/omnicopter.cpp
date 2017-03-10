@@ -9,11 +9,13 @@
 
 #include <tf/transform_broadcaster.h>
 
-#define LOOP_RATE 500
+#define LOOP_RATE 60
 #define K_F 6.8834e-11
 #define K_M 6.8834e-12 //wild guess
 #define PI 3.141592653589
-#define FREEZE_POSITION true
+#define FREEZE_POSITION false
+#define FREEZE_ROTATION false
+#define DISABLE_GRAVITY true
 
 double motor1_cmd_usec = 0;
 double motor2_cmd_usec = 0;
@@ -29,9 +31,9 @@ Eigen::Quaterniond q(1,0,0,0); //Attitude quaternion (w,x,y,z)
 Eigen::Vector3d w(0,0,0); //Angular rates
 Eigen::Vector3d v(0,0,0); //Velocity
 
-const Eigen::Matrix3d J = 0.5*Eigen::Matrix3d::Identity(); //Inertia matrix
+const Eigen::Matrix3d J = 0.005*Eigen::Matrix3d::Identity(); //Inertia matrix
 const double m = 0.5; //mass [kg]
-const Eigen::Vector3d g(0,0,9.81);
+const Eigen::Vector3d g(0,0,1);
 
 visualization_msgs::MarkerArray visuals;
 
@@ -68,6 +70,9 @@ double pwmToForce(double pwm){
 		double max_rpm = 38000;
 		double max_w = max_rpm*2*PI;
 		double w = max_w*(pwm-1500)/500;
+		if(w < 0){
+			return -K_F*w*w;
+		}
 		return K_F*w*w;
 	}
 }
@@ -88,6 +93,9 @@ double pwmToTorque(double pwm){
 		double max_rpm = 38000;
 		double max_w = max_rpm*2*PI;
 		double w = max_w*(pwm-1500)/500;
+		if(w < 0){
+			return -K_M*w*w;
+		}
 		return K_M*w*w;
 	}
 }
@@ -129,7 +137,7 @@ Eigen::Vector3d getBodyTorque(){
 		Eigen::Vector3d X_col = X.col(i);
 		P_cross_X.col(i) = P_col.cross(X_col);
 	}
-	return P_cross_X*getMotorForces() + X*getMotorTorques();
+	return P_cross_X*getMotorForces();// + X*getMotorTorques();
 }
 
 
@@ -163,7 +171,7 @@ int main(int argc, char **argv){
 
 	double a = 0.5 + 1.0/sqrt(12);
 	double b = 0.5- 1.0/sqrt(12);
-	double c = sqrt(3);
+	double c = 1.0/sqrt(3);
 	X << -a, b,-b, a, a,-b, b,-a,
 		  b, a,-a,-b,-b,-a, a, b,
 		  c,-c,-c, c, c,-c,-c, c;
@@ -172,11 +180,11 @@ int main(int argc, char **argv){
 		 1, 1,-1,-1, 1, 1,-1,-1,
 		 1, 1, 1, 1,-1,-1,-1,-1;
 
-	P *= 0.4/sqrt(3);
+	P *= 0.12/sqrt(3);
 
 
 	ros::Rate loop_rate(LOOP_RATE);
-	double dt = 1/LOOP_RATE;
+	double dt = 1.0/LOOP_RATE;
 	Eigen::Vector3d f(0,0,0); //total force in BODY frame
 	Eigen::Vector3d t(0,0,0); //total torque in BODY frame
 	Eigen::Vector3d acc(0,0,0); //linear acceleration
@@ -191,26 +199,35 @@ int main(int argc, char **argv){
 		t = getBodyTorque();
 
 		// Kinetics
-		acc = (1/m)*R*f - g;
+		if(DISABLE_GRAVITY){
+			acc = (1/m)*R*f;
+		} else {
+			acc = (1/m)*R*f - g;
+		}
+		
 		alpha = J.inverse()*(t-w.cross(J*w));
+		//ROS_INFO("alpha = %f %f %f",alpha(0), alpha(1), alpha(2));
 
 		// Kinematics
 		// Linear
-		v += acc*dt;
 		if(!FREEZE_POSITION){
+			v += acc*dt;
 			p += v*dt;	
 		}
 		
 
 		// Angular
-		w += alpha*dt; 
-		Eigen::Quaterniond w_q(0,w(0)*0.5*dt,w(1)*0.5*dt,w(2)*0.5*dt);
-		Eigen::Quaterniond q_dot = q*w_q;
-		q.x() += q_dot.x();
-		q.y() += q_dot.y();
-		q.z() += q_dot.z();
-		q.w() += q_dot.w();
-		q.normalize();
+		if(!FREEZE_ROTATION){
+			w += alpha*dt; 
+			Eigen::Quaterniond w_q(0,w(0)*0.5*dt,w(1)*0.5*dt,w(2)*0.5*dt);
+			Eigen::Quaterniond q_dot = q*w_q;
+			q.x() += q_dot.x()*dt;
+			q.y() += q_dot.y()*dt;
+			q.z() += q_dot.z()*dt;
+			q.w() += q_dot.w()*dt;
+			q.normalize();
+		}
+		//ROS_INFO("a(%.1f %.1f %.1f) alp(%.1f %.1f %.1f) w(%.1f %.1f %.1f) v(%.1f %.1f %.1f)", acc(0), acc(1), acc(2), alpha(0), alpha(1), alpha(2), w(0), w(1), w(2), v(0), v(1), v(2));
 
 
 		publishPose();

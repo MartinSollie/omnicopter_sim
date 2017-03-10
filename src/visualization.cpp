@@ -76,7 +76,6 @@ void commandCallback(const omnicopter_sim::MotorCommand& input) {
 	// Update motor torques
 
 	for (int i = 5; i <= 12 ; i++){
-		visuals.markers[i].header.stamp = ros::Time::now();
 		if(visuals.markers[i].scale.x > 0){
 			visuals.markers[i].color.r = 0.0;
 	  		visuals.markers[i].color.g = 1.0;
@@ -85,6 +84,10 @@ void commandCallback(const omnicopter_sim::MotorCommand& input) {
 			visuals.markers[i].color.r = 1.0;
 	  		visuals.markers[i].color.g = 0.0;
 		}
+	}
+
+	for(int i = 0; i < visuals.markers.size(); i++){
+		visuals.markers[i].header.stamp = ros::Time::now();
 	}
 
 	vis_pub.publish(visuals);

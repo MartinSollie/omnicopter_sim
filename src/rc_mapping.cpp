@@ -1,7 +1,7 @@
 #include <ros/ros.h>
 #include <sensor_msgs/Joy.h>
 #include <omnicopter_sim/RCInput.h>
-#include <omnicopter_sim/MotorCommand.h> //Testing
+#include <geometry_msgs/Vector3Stamped.h>
 
 #define PITCH_STICK 1 // 1.0 at bottom, -1.0 at top
 #define ROLL_STICK 0 // 1.0 to left, -1.0 to right
@@ -28,17 +28,11 @@ void joyCallback(const sensor_msgs::Joy& input) {
 
 
 	//Testing
-	omnicopter_sim::MotorCommand cmd;
+	geometry_msgs::Vector3Stamped cmd;
 	cmd.header = input.header;
-	cmd.motor1_usec = msg.pitchrate*500+1500;
-	cmd.motor2_usec = msg.pitchrate*500+1500;
-	cmd.motor3_usec = msg.pitchrate*500+1500;
-	cmd.motor4_usec = msg.pitchrate*500+1500;
-	cmd.motor5_usec = msg.pitchrate*500+1500;
-	cmd.motor6_usec = msg.pitchrate*500+1500;
-	cmd.motor7_usec = msg.pitchrate*500+1500;
-	cmd.motor8_usec = msg.pitchrate*500+1500;
-
+	cmd.vector.z = 10*msg.yawrate;
+	cmd.vector.x = 10*msg.rollrate;
+	cmd.vector.y = 10*msg.pitchrate;
 	cmd_pub.publish(cmd);
 
 
@@ -50,7 +44,7 @@ int main(int argc, char **argv){
 
 	ros::Subscriber joy_sub = nh.subscribe("joy", 1, joyCallback); 
 	rc_pub = nh.advertise<omnicopter_sim::RCInput>("rc_input",0);
-	cmd_pub = nh.advertise<omnicopter_sim::MotorCommand>("motor_commands",0); //Testing
+	cmd_pub = nh.advertise<geometry_msgs::Vector3Stamped>("torque_sp",0); //Testing
 
 	ros::spin();
 }
