@@ -3,6 +3,7 @@
 #include <geometry_msgs/Vector3Stamped.h>
 #include <cmath>
 #include <omnicopter_sim/MotorCommand.h>
+#include <algorithm>
 
 /*
 Control allocation based on
@@ -46,10 +47,12 @@ Eigen::MatrixXd M_pinv(6,8);
 ros::Publisher motor_pub;
 
 double motor_force_to_usec(double f){
+	//std::min(std::max(x, 1000), 2000)
 	if(f < 0){
-		return -500/(2*PI*38000)*sqrt(-f/K_F)+1500;
+		return std::min(std::max(-500/(2*PI*38000)*sqrt(-f/K_F)+1500, 1000.0), 2000.0);
 	}
-	return 500/(2*PI*38000)*sqrt(f/K_F)+1500;
+	
+	return std::min(std::max(500/(2*PI*38000)*sqrt(f/K_F)+1500, 1000.0), 2000.0);
 }
 
 void forceCallback(const geometry_msgs::Vector3Stamped& input) {
@@ -61,9 +64,9 @@ void forceCallback(const geometry_msgs::Vector3Stamped& input) {
 	}
 	Eigen::VectorXd wrench(6);
 	wrench = Eigen::VectorXd::Zero(6);
-	wrench.block(3,1,0,0) = force_setpoint;
+	wrench.block<3,1>(0,0) = force_setpoint;
 	if(torque_valid){
-		wrench.block(3,1,0,0) = torque_setpoint;
+		wrench.block<3,1>(0,0) = torque_setpoint;
 	}
 
 	Eigen::VectorXd motor_forces(6);
