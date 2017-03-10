@@ -35,17 +35,20 @@ add_executable(control_allocation src/control_allocation.cpp)
 add_executable(attitude_controller src/attitude_controller.cpp)
 add_executable(position_controller src/position_controller.cpp)
 add_executable(rc_mapping src/rc_mapping.cpp)
+add_executable(visualization src/visualization.cpp)
 
 
 add_dependencies(omnicopter ${${PROJECT_NAME}_EXPORTED_TARGETS})
 add_dependencies(control_allocation ${${PROJECT_NAME}_EXPORTED_TARGETS})
 add_dependencies(rc_mapping ${${PROJECT_NAME}_EXPORTED_TARGETS})
+add_dependencies(visualization ${${PROJECT_NAME}_EXPORTED_TARGETS})
 
 target_link_libraries(omnicopter ${catkin_LIBRARIES})
 target_link_libraries(control_allocation ${catkin_LIBRARIES})
 target_link_libraries(attitude_controller ${catkin_LIBRARIES})
 target_link_libraries(position_controller ${catkin_LIBRARIES})
 target_link_libraries(rc_mapping ${catkin_LIBRARIES})
+target_link_libraries(visualization ${catkin_LIBRARIES})
 
 
 

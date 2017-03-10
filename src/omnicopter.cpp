@@ -7,7 +7,9 @@
 #include <vector>
 #include <cmath>
 
-#define LOOP_RATE 200
+#include <tf/transform_broadcaster.h>
+
+#define LOOP_RATE 500
 #define K_F 6.8834e-11
 #define K_M 6.8834e-12 //wild guess
 #define PI 3.141592653589
@@ -36,7 +38,7 @@ visualization_msgs::MarkerArray visuals;
 Eigen::MatrixXd X(3,8);
 Eigen::MatrixXd P(3,8);
 
-ros::Publisher vis_pub, pose_pub;
+ros::Publisher pose_pub;
 
 
 void commandCallback(const omnicopter_sim::MotorCommand& input) {
@@ -130,49 +132,9 @@ Eigen::Vector3d getBodyTorque(){
 	return P_cross_X*getMotorForces() + X*getMotorTorques();
 }
 
-void initializeVisualization(){
-	//Draw a box
-	visualization_msgs::Marker marker;
-	marker.header.frame_id = "world";
-	marker.header.stamp = ros::Time::now();
-	marker.ns = "omnicopter";
-	marker.id = 0;
-	marker.type = visualization_msgs::Marker::CUBE;
-   	marker.action = visualization_msgs::Marker::ADD;
-	marker.pose.position.x = p(0);
-   	marker.pose.position.y = p(1);
-  	marker.pose.position.z = p(2);
-  	marker.pose.orientation.x = q.x();
-  	marker.pose.orientation.y = q.y();
-  	marker.pose.orientation.z = q.z();
-  	marker.pose.orientation.w = q.w();
-  	marker.scale.x = 0.4;
-  	marker.scale.y = 0.4;
-  	marker.scale.z = 0.4;
-  	marker.color.a = 0.5; // Don't forget to set the alpha!
-  	marker.color.r = 0.0;
-  	marker.color.g = 1.0;
-  	marker.color.b = 0.0;
-  	visuals.markers.push_back(marker);
 
-}
 
-void publishVisualization(){
-	// Update motor forces and torques
-	for (int i = 0; i < visuals.markers.size(); i++){
-		visuals.markers[i].header.stamp = ros::Time::now();
-		visuals.markers[i].pose.position.x = p(0);
-	   	visuals.markers[i].pose.position.y = p(1);
-	  	visuals.markers[i].pose.position.z = p(2);
-	  	visuals.markers[i].pose.orientation.x = q.x();
-	  	visuals.markers[i].pose.orientation.y = q.y();
-	  	visuals.markers[i].pose.orientation.z = q.z();
-	  	visuals.markers[i].pose.orientation.w = q.w();
-	}
 
-	vis_pub.publish(visuals);
-
-}
 
 void publishPose(){
 	geometry_msgs::PoseStamped msg;
@@ -194,7 +156,7 @@ int main(int argc, char **argv){
 	ros::NodeHandle nh;
 
 	pose_pub = nh.advertise<geometry_msgs::PoseStamped>("pose", 1);
-	vis_pub = nh.advertise<visualization_msgs::MarkerArray>( "visualization_marker_array", 0 );
+	
 
 	ros::Subscriber motor_cmd_sub = nh.subscribe("motor_commands", 1, commandCallback); 
 
@@ -219,9 +181,6 @@ int main(int argc, char **argv){
 	Eigen::Vector3d t(0,0,0); //total torque in BODY frame
 	Eigen::Vector3d acc(0,0,0); //linear acceleration
 	Eigen::Vector3d alpha(0,0,0); //angular acceleration
-
-	initializeVisualization();
-	unsigned int visualization_counter = 0;
 
 	while(ros::ok()) {
 
@@ -255,11 +214,13 @@ int main(int argc, char **argv){
 
 
 		publishPose();
-		if(visualization_counter > 10){
-			publishVisualization();
-			visualization_counter = 0;
-		}
-		visualization_counter++;
+		static tf::TransformBroadcaster br;
+		tf::Transform transform;
+  		transform.setOrigin( tf::Vector3(p(0), p(1), p(2)) );
+  		tf::Quaternion tf_q(q.x(), q.y(), q.z(), q.w());
+  		transform.setRotation(tf_q);
+  		br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", "body"));
+
 		loop_rate.sleep();
 	}
 
