@@ -165,14 +165,14 @@ int main(int argc, char **argv){
 	double b = 0.5- 1.0/sqrt(12);
 	double c = sqrt(3);
 	X << -a, b,-b, a, a,-b, b,-a,
-		  b, a,-b,-a,-a,-b, a, b,
+		  b, a,-a,-b,-b,-a, a, b,
 		  c,-c,-c, c, c,-c,-c, c;
 
 	P << 1,-1, 1,-1, 1,-1, 1,-1,
 		 1, 1,-1,-1, 1, 1,-1,-1,
 		 1, 1, 1, 1,-1,-1,-1,-1;
 
-	P *= 1.0/sqrt(3);
+	P *= 0.4/sqrt(3);
 
 
 	ros::Rate loop_rate(LOOP_RATE);

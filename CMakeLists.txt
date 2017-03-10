@@ -7,6 +7,7 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   message_generation
   std_msgs
+  tf
 )
 
 add_message_files(

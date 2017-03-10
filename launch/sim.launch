@@ -4,9 +4,11 @@
   <node name="joy" pkg="joy" type="joy_node" output="screen" >
     <param name="dev" value="$(arg joy_dev)" />
     <param name="autorepeat_rate" value="200"/>
+    <param name="deadzone" value="0"/>
   </node>
 
   <node name="omnicopter" pkg="omnicopter_sim" type="omnicopter" output="screen" />
   <node name="rc_mapping" pkg="omnicopter_sim" type="rc_mapping" output="screen" />
+  <node name="visualization" pkg="omnicopter_sim" type="visualization" output="screen" />
 
 </launch>
