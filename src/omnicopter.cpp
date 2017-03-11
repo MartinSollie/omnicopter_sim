@@ -3,13 +3,15 @@
 #include <omnicopter_sim/MotorCommand.h>
 #include <visualization_msgs/MarkerArray.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <sensor_msgs/Imu.h>
 #include <Eigen/Geometry>
 #include <vector>
 #include <cmath>
 
 #include <tf/transform_broadcaster.h>
 
-#define LOOP_RATE 60
+#define LOOP_RATE 600
+#define IMU_RATE_FACTOR 6 //Imu rate = LOOP_RATE/IMU_RATE_FACTOR
 #define K_F 6.8834e-11
 #define K_M 6.8834e-12 //wild guess
 #define PI 3.141592653589
@@ -40,7 +42,7 @@ visualization_msgs::MarkerArray visuals;
 Eigen::MatrixXd X(3,8);
 Eigen::MatrixXd P(3,8);
 
-ros::Publisher pose_pub;
+ros::Publisher pose_pub, imu_pub;
 
 
 void commandCallback(const omnicopter_sim::MotorCommand& input) {
@@ -164,6 +166,7 @@ int main(int argc, char **argv){
 	ros::NodeHandle nh;
 
 	pose_pub = nh.advertise<geometry_msgs::PoseStamped>("pose", 1);
+	imu_pub = nh.advertise<sensor_msgs::Imu>("imu",1);
 	
 
 	ros::Subscriber motor_cmd_sub = nh.subscribe("motor_commands", 1, commandCallback); 
@@ -189,6 +192,7 @@ int main(int argc, char **argv){
 	Eigen::Vector3d t(0,0,0); //total torque in BODY frame
 	Eigen::Vector3d acc(0,0,0); //linear acceleration
 	Eigen::Vector3d alpha(0,0,0); //angular acceleration
+	unsigned int imu_msg_counter = 0;
 
 	while(ros::ok()) {
 
@@ -231,6 +235,28 @@ int main(int argc, char **argv){
 
 
 		publishPose();
+
+		imu_msg_counter++;
+		if(imu_msg_counter >= IMU_RATE_FACTOR){
+			sensor_msgs::Imu imu_msg;
+			imu_msg.header.stamp = ros::Time::now();
+			imu_msg.header.frame_id = "body";
+			imu_msg.orientation.x = q.x();
+			imu_msg.orientation.y = q.y();
+			imu_msg.orientation.z = q.z();
+			imu_msg.orientation.w = q.w();
+			imu_msg.angular_velocity.x = v(1);
+			imu_msg.angular_velocity.y = v(2);
+			imu_msg.angular_velocity.z = v(3);
+			imu_msg.linear.x = a(1);
+			imu_msg.linear.y = a(2);
+			imu_msg.linear.z = a(3);
+			imu_pub.publish(imu_msg);
+
+			imu_msg_counter = 0;
+		}
+
+		
 		static tf::TransformBroadcaster br;
 		tf::Transform transform;
   		transform.setOrigin( tf::Vector3(p(0), p(1), p(2)) );

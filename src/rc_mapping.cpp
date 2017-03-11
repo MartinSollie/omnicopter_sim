@@ -20,10 +20,10 @@ ros::Publisher cmd_pub;
 void joyCallback(const sensor_msgs::Joy& input) {
 	omnicopter_sim::RCInput msg;
 	msg.header = input.header;
-	msg.rollrate = ROLL_SCALE*input.axes[ROLL_STICK];
-	msg.pitchrate = PITCH_SCALE*input.axes[PITCH_STICK];
-	msg.throttle = THROTTLE_SCALE*input.axes[THROTTLE_STICK];
-	msg.yawrate = YAWRATE_SCALE*input.axes[YAWRATE_STICK];
+	msg.rollstick = ROLL_SCALE*input.axes[ROLL_STICK];
+	msg.pitchstick = PITCH_SCALE*input.axes[PITCH_STICK];
+	msg.throttlestick = THROTTLE_SCALE*input.axes[THROTTLE_STICK];
+	msg.yawstick = YAWRATE_SCALE*input.axes[YAWRATE_STICK];
 	rc_pub.publish(msg);
 
 

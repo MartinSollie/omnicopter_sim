@@ -14,6 +14,10 @@ add_message_files(
 	FILES
     RCInput.msg
     MotorCommand.msg
+    AttSp.msg
+    PosSp.msg
+    Arm.msg
+    State.msg
 )
 
 #Generate added messages and services with any dependencies listed here
@@ -42,6 +46,8 @@ add_dependencies(omnicopter ${${PROJECT_NAME}_EXPORTED_TARGETS})
 add_dependencies(control_allocation ${${PROJECT_NAME}_EXPORTED_TARGETS})
 add_dependencies(rc_mapping ${${PROJECT_NAME}_EXPORTED_TARGETS})
 add_dependencies(visualization ${${PROJECT_NAME}_EXPORTED_TARGETS})
+add_dependencies(attitude_controller ${${PROJECT_NAME}_EXPORTED_TARGETS})
+add_dependencies(position_controller ${${PROJECT_NAME}_EXPORTED_TARGETS})
 
 target_link_libraries(omnicopter ${catkin_LIBRARIES})
 target_link_libraries(control_allocation ${catkin_LIBRARIES})

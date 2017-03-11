@@ -1,7 +1,9 @@
 Header header
-float32 rollrate
-float32 pitchrate
-float32 throttle
-float32 yawrate
+float32 rollstick
+float32 pitchstick
+float32 throttlestick
+float32 yawstick
+uint8 main_mode_switch
+uint8 assist_mode_stick
 
 
