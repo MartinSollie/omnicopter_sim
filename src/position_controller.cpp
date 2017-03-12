@@ -1,6 +1,7 @@
 #include <ros/ros.h>
 #include <omnicopter_sim/PosSp.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/Vector3Stamped.h>
 
 ros::Publisher force_pub;
 

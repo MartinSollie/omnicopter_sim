@@ -33,7 +33,7 @@ Eigen::Quaterniond q(1,0,0,0); //Attitude quaternion (w,x,y,z)
 Eigen::Vector3d w(0,0,0); //Angular rates
 Eigen::Vector3d v(0,0,0); //Velocity
 
-const Eigen::Matrix3d J = 0.005*Eigen::Matrix3d::Identity(); //Inertia matrix
+const Eigen::Matrix3d J = 0.003*Eigen::Matrix3d::Identity(); //Inertia matrix
 const double m = 0.5; //mass [kg]
 const Eigen::Vector3d g(0,0,1);
 
@@ -223,7 +223,7 @@ int main(int argc, char **argv){
 		// Angular
 		if(!FREEZE_ROTATION){
 			w += alpha*dt; 
-			Eigen::Quaterniond w_q(0,w(0)*0.5*dt,w(1)*0.5*dt,w(2)*0.5*dt);
+			Eigen::Quaterniond w_q(0,w(0)*0.5,w(1)*0.5,w(2)*0.5);
 			Eigen::Quaterniond q_dot = q*w_q;
 			q.x() += q_dot.x()*dt;
 			q.y() += q_dot.y()*dt;
@@ -236,6 +236,7 @@ int main(int argc, char **argv){
 
 		publishPose();
 
+
 		imu_msg_counter++;
 		if(imu_msg_counter >= IMU_RATE_FACTOR){
 			sensor_msgs::Imu imu_msg;
@@ -245,16 +246,17 @@ int main(int argc, char **argv){
 			imu_msg.orientation.y = q.y();
 			imu_msg.orientation.z = q.z();
 			imu_msg.orientation.w = q.w();
-			imu_msg.angular_velocity.x = v(1);
-			imu_msg.angular_velocity.y = v(2);
-			imu_msg.angular_velocity.z = v(3);
-			imu_msg.linear.x = a(1);
-			imu_msg.linear.y = a(2);
-			imu_msg.linear.z = a(3);
+			imu_msg.angular_velocity.x = w(0);
+			imu_msg.angular_velocity.y = w(1);
+			imu_msg.angular_velocity.z = w(2);
+			imu_msg.linear_acceleration.x = acc(0);
+			imu_msg.linear_acceleration.y = acc(1);
+			imu_msg.linear_acceleration.z = acc(2);
 			imu_pub.publish(imu_msg);
 
 			imu_msg_counter = 0;
 		}
+
 
 		
 		static tf::TransformBroadcaster br;
