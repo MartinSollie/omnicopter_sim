@@ -6,7 +6,7 @@
 #include <cmath>
 #include <geometry_msgs/Quaternion.h>
 
-#define T_ATT 1.0 // Attitude control time constant
+#define T_ATT 0.2 // Attitude control time constant
 #define T_W 0.01 // Angular rate control time constant
 
 /*
@@ -73,10 +73,15 @@ void doControl(){
 		w_des = control_attitude(q_des, q_curr);
 	}
 	else if(setp.type == omnicopter_sim::AttSp::SETPOINT_TYPE_RATES){
-		/*if(std::abs(setp.wx) < 0.001 && std::abs(setp.wy) < 0.001 && std::abs(setp.wz) < 0.001){
-			// If the rate setpoint is ~0, we want to hold the current attitude
+		// If the rate setpoint is ~0, we want to hold the current attitude, but only sample it when the
+		// actual rate gets small so we don't get a big bounceback
+		bool zero_setpoint = std::abs(setp.wx) < 0.001 && std::abs(setp.wy) < 0.001 && std::abs(setp.wz) < 0.001;
+		bool small_rate = std::abs(imu_data.angular_velocity.x) < 1 && 
+							std::abs(imu_data.angular_velocity.y) < 1 && 
+							std::abs(imu_data.angular_velocity.z) < 1;
+		if(zero_setpoint && small_rate){
 			if(!hold_attitude){
-				q_hold = setp.q;
+				q_hold = imu_data.orientation;
 				hold_attitude = true;
 			}
 			q_des.x() = q_hold.x;
@@ -91,14 +96,14 @@ void doControl(){
 			w_des = control_attitude(q_des, q_curr);
 
 		}
-		else{*/
+		else{
 			// Do rate control
 			hold_attitude = false;
 			w_des(0) = setp.wx;
 			w_des(1) = setp.wy;
 			w_des(2) = setp.wz;
 			
-		//}
+		}
 	}
 	w_curr(0) = imu_data.angular_velocity.x;
 	w_curr(1) = imu_data.angular_velocity.y;
