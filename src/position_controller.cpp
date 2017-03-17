@@ -6,14 +6,38 @@
 #include <Eigen/Geometry>
 
 ros::Publisher force_pub;
-Eigen::Matrix3d R;
+Eigen::Matrix3d R; // v_body = R*v_enu
 
 void setpointCallback(const omnicopter_sim::PosSp& input){
+	// All inputs are given in ENU and the force output is in BODY
+	geometry_msgs::Vector3Stamped msg;
 	if(input.type == omnicopter_sim::PosSp::SETPOINT_TYPE_FORCE){
-		// Transform input from ENU to BODY
+		Eigen::Vector3Stamped force_body = R*Eigen::Vector3Stamped(input.fx, input.fy, input.fz);
+		msg.vector.x = force_body(0);
+		msg.vector.y = force_body(1);
+		msg.vector.z = force_body(2);
 	}
+	/*else if (input.type == omnicopter_sim::PosSp::SETPOINT_TYPE_CLIMBRATE_FORCE){
+		// If climbrate setpoint is ~0, control altitude
 
-
+	}
+	else if (input.type == omnicopter_sim::PosSp::SETPOINT_TYPE_ALTHOLD_FORCE){
+		
+	}
+	else if (input.type == omnicopter_sim::PosSp::SETPOINT_TYPE_POS){
+		// Position P controller and velocity PID+FF
+		
+	}
+	else if (input.type == omnicopter_sim::PosSp::SETPOINT_TYPE_VEL){
+		// If velocity setpoint is ~0, control position
+		
+	}*/
+	else {
+		ROS_ERROR("Position controller: unknown setpoint type");
+		return;
+	}
+	msg.header.stamp = ros::Time:now();
+	force_pub.publish(msg);
 }
 
 void imuCallback(const sensor_msgs::Imu& input){
