@@ -12,5 +12,6 @@
   <node name="visualization" pkg="omnicopter_sim" type="visualization" output="screen" />
   <node name="control_allocation" pkg="omnicopter_sim" type="control_allocation" output="screen" />
   <node name="attitude_controller" pkg="omnicopter_sim" type="attitude_controller" output="screen" />
+  <node name="position_controller" pkg="omnicopter_sim" type="position_controller" output="screen" />
 
 </launch>
