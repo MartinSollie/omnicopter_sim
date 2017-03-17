@@ -12,7 +12,7 @@ void setpointCallback(const omnicopter_sim::PosSp& input){
 	// All inputs are given in ENU and the force output is in BODY
 	geometry_msgs::Vector3Stamped msg;
 	if(input.type == omnicopter_sim::PosSp::SETPOINT_TYPE_FORCE){
-		Eigen::Vector3Stamped force_body = R*Eigen::Vector3Stamped(input.fx, input.fy, input.fz);
+		Eigen::Vector3d force_body = R.inverse()*Eigen::Vector3d(input.fx, input.fy, input.fz);
 		msg.vector.x = force_body(0);
 		msg.vector.y = force_body(1);
 		msg.vector.z = force_body(2);
@@ -36,12 +36,12 @@ void setpointCallback(const omnicopter_sim::PosSp& input){
 		ROS_ERROR("Position controller: unknown setpoint type");
 		return;
 	}
-	msg.header.stamp = ros::Time:now();
+	msg.header.stamp = ros::Time::now();
 	force_pub.publish(msg);
 }
 
 void imuCallback(const sensor_msgs::Imu& input){
-	Eigen::Quaternion q;
+	Eigen::Quaterniond q;
 	q.x() = input.orientation.x;
 	q.y() = input.orientation.y;
 	q.z() = input.orientation.z;

@@ -66,7 +66,7 @@ void forceCallback(const geometry_msgs::Vector3Stamped& input) {
 	wrench = Eigen::VectorXd::Zero(6);
 	wrench.block<3,1>(0,0) = force_setpoint;
 	if(torque_valid){
-		wrench.block<3,1>(0,0) = torque_setpoint;
+		wrench.block<3,1>(3,0) = torque_setpoint;
 	}
 
 	Eigen::VectorXd motor_forces(6);
