@@ -14,10 +14,7 @@ add_message_files(
 	FILES
     RCInput.msg
     MotorCommand.msg
-    AttSp.msg
-    PosSp.msg
-    Arm.msg
-    State.msg
+    ControlMode.msg
 )
 
 #Generate added messages and services with any dependencies listed here

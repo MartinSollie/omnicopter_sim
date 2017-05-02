@@ -12,12 +12,12 @@
 
 #define LOOP_RATE 600
 #define IMU_RATE_FACTOR 6 //Imu rate = LOOP_RATE/IMU_RATE_FACTOR
-#define K_F 6.8834e-11
-#define K_M 6.8834e-12 //wild guess
-#define PI 3.141592653589
-#define FREEZE_POSITION false
+#define K_F 4.2e-7
+#define K_M 4.2e-8 //wild guess
+#define max_rpm 29000
+#define FREEZE_POSITION true
 #define FREEZE_ROTATION false
-#define DISABLE_GRAVITY true
+#define DISABLE_GRAVITY false
 
 double motor1_cmd_usec = 0;
 double motor2_cmd_usec = 0;
@@ -33,9 +33,9 @@ Eigen::Quaterniond q(1,0,0,0); //Attitude quaternion (w,x,y,z)
 Eigen::Vector3d w(0,0,0); //Angular rates
 Eigen::Vector3d v(0,0,0); //Velocity
 
-const Eigen::Matrix3d J = 0.003*Eigen::Matrix3d::Identity(); //Inertia matrix
-const double m = 0.5; //mass [kg]
-const Eigen::Vector3d g(0,0,1);
+const Eigen::Matrix3d J = 0.008*Eigen::Matrix3d::Identity(); //Inertia matrix
+const double m = 0.693; //mass [kg]
+const Eigen::Vector3d g(0,0,9.81);
 
 visualization_msgs::MarkerArray visuals;
 
@@ -65,12 +65,7 @@ double pwmToForce(double pwm){
 		return 0;
 	}
 	else{
-		// TODO proper model
-
-		// For now just assume linear pwm to speed relationship
-		// and quadratic speed to force relationship
-		double max_rpm = 38000;
-		double max_w = max_rpm*2*PI;
+		double max_w = max_rpm/60.0*2*M_PI;
 		double w = max_w*(pwm-1500)/500;
 		if(w < 0){
 			return -K_F*w*w;
@@ -88,12 +83,7 @@ double pwmToTorque(double pwm){
 		return 0;
 	}
 	else{
-		// TODO proper model
-
-		// For now just assume linear pwm to speed relationship
-		// and quadratic speed to torque relationship
-		double max_rpm = 38000;
-		double max_w = max_rpm*2*PI;
+		double max_w = max_rpm/60.0*2*M_PI;
 		double w = max_w*(pwm-1500)/500;
 		if(w < 0){
 			return -K_M*w*w;
@@ -183,7 +173,7 @@ int main(int argc, char **argv){
 		 1, 1,-1,-1, 1, 1,-1,-1,
 		 1, 1, 1, 1,-1,-1,-1,-1;
 
-	P *= 0.12/sqrt(3);
+	P *= 0.12/sqrt(3); //Motors are placed 12cm from the center along the tubes => 13/sqrt(3) in x,y,z direction
 
 
 	ros::Rate loop_rate(LOOP_RATE);

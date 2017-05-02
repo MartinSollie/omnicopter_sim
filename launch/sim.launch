@@ -11,7 +11,18 @@
   <node name="rc_mapping" pkg="omnicopter_sim" type="rc_mapping" output="screen" />
   <node name="visualization" pkg="omnicopter_sim" type="visualization" output="screen" />
   <node name="control_allocation" pkg="omnicopter_sim" type="control_allocation" output="screen" />
-  <node name="attitude_controller" pkg="omnicopter_sim" type="attitude_controller" output="screen" />
+  <node name="attitude_controller" pkg="omnicopter_sim" type="attitude_controller" output="screen" >
+    <param name="K_p_roll" value="0.65"/>
+    <param name="K_p_pitch" value="0.65"/>
+    <param name="K_p_yaw" value="0.65"/>
+    <param name="K_d_roll" value="0.0"/>
+    <param name="K_d_pitch" value="0.0"/>
+    <param name="K_d_yaw" value="0.0"/>
+    <param name="K_i_roll" value="0.26"/>
+    <param name="K_i_pitch" value="0.26"/>
+    <param name="K_i_yaw" value="0.0"/>
+  </node>
   <node name="position_controller" pkg="omnicopter_sim" type="position_controller" output="screen" />
+  <node pkg="rviz" type="rviz" name="rviz"/>
 
 </launch>

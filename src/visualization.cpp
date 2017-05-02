@@ -7,9 +7,9 @@
 #include <vector>
 #include <Eigen/Geometry>
 
-#define K_F 6.8834e-11
-#define K_M 6.8834e-12 //wild guess
-#define PI 3.141592653589
+#define K_F 4.2e-7
+#define K_M 4.2e-8 //wild guess
+#define max_rpm 29000
 #define MOTOR_DISTANCE_CG 0.12
 #define BOX_DIM 0.4
 
@@ -30,9 +30,8 @@ double pwmToForce(double pwm){
 		ROS_ERROR("Simulation PWM input > 2000");
 		return 0;
 	}
-	else{
-		double max_rpm = 38000;
-		double max_w = max_rpm*2*PI;
+	else{;
+		double max_w = max_rpm/60.0*2*M_PI;
 		double w = max_w*(pwm-1500)/500;
 		if(w < 0){
 			return -K_F*w*w;
@@ -50,8 +49,7 @@ double pwmToTorque(double pwm){
 		return 0;
 	}
 	else{
-		double max_rpm = 38000;
-		double max_w = max_rpm*2*PI;
+		double max_w = max_rpm/60.0*2*M_PI;
 		double w = max_w*(pwm-1500)/500;
 		if(w < 0){
 			return -K_M*w*w;
@@ -64,14 +62,14 @@ const double MAX_FORCE(pwmToForce(2000));
 
 void commandCallback(const omnicopter_sim::MotorCommand& input) {
 	// Update motor forces
-	visuals.markers[5].scale.x = 0.2*pwmToForce(input.motor1_usec)/MAX_FORCE;
-	visuals.markers[6].scale.x = 0.2*pwmToForce(input.motor2_usec)/MAX_FORCE;
-	visuals.markers[7].scale.x = 0.2*pwmToForce(input.motor3_usec)/MAX_FORCE;
-	visuals.markers[8].scale.x = 0.2*pwmToForce(input.motor4_usec)/MAX_FORCE;
-	visuals.markers[9].scale.x = 0.2*pwmToForce(input.motor5_usec)/MAX_FORCE;
-	visuals.markers[10].scale.x = 0.2*pwmToForce(input.motor6_usec)/MAX_FORCE;
-	visuals.markers[11].scale.x = 0.2*pwmToForce(input.motor7_usec)/MAX_FORCE;
-	visuals.markers[12].scale.x = 0.2*pwmToForce(input.motor8_usec)/MAX_FORCE;
+	visuals.markers[5].scale.x = pwmToForce(input.motor1_usec)/MAX_FORCE;
+	visuals.markers[6].scale.x = pwmToForce(input.motor2_usec)/MAX_FORCE;
+	visuals.markers[7].scale.x = pwmToForce(input.motor3_usec)/MAX_FORCE;
+	visuals.markers[8].scale.x = pwmToForce(input.motor4_usec)/MAX_FORCE;
+	visuals.markers[9].scale.x = pwmToForce(input.motor5_usec)/MAX_FORCE;
+	visuals.markers[10].scale.x = pwmToForce(input.motor6_usec)/MAX_FORCE;
+	visuals.markers[11].scale.x = pwmToForce(input.motor7_usec)/MAX_FORCE;
+	visuals.markers[12].scale.x = pwmToForce(input.motor8_usec)/MAX_FORCE;
 
 	// Update motor torques
 

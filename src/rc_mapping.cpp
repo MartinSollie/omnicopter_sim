@@ -1,53 +1,78 @@
 #include <ros/ros.h>
 #include <sensor_msgs/Joy.h>
 #include <omnicopter_sim/RCInput.h>
-#include <geometry_msgs/Vector3Stamped.h>
-#include <omnicopter_sim/AttSp.h>
+#include <omnicopter_sim/ControlMode.h>
+#include <cmath>
 
-#define PITCH_STICK 1 // 1.0 at bottom, -1.0 at top
 #define ROLL_STICK 0 // 1.0 to left, -1.0 to right
+#define PITCH_STICK 1 // 1.0 at bottom, -1.0 at top
 #define THROTTLE_STICK 2 // 1.0 at bottom, -1.0 at top
 #define YAWRATE_STICK 3 // 1.0 to left, -1.0 to right
-#define POS_ATT_MODE_SWITCH 5 //1.0 at bottom, 0.0 at middle, -1.0 at top
+#define ARM_CH 4 // disarmed = 0.0, armed = 1.0
+#define MODE_CH1 5 //-1.0 at bottom, 0.0 at middle, 1.0 at top
+#define MODE_CH2 6 //-1.0 at bottom, 0.0 at middle, 1.0 at top
 
-#define ROLL_SCALE -1.0
-#define PITCH_SCALE -1.0
-#define YAWRATE_SCALE 1.0
-#define THROTTLE_SCALE -1.0
+/*
+Note that the ROS joy node initializes all outputs to 0.
+Each channel will only have the correct values after it has changed value once
+This is not a problem with a real setup using a FrSky receiver
+*/
+
+
 
 ros::Publisher rc_pub;
-ros::Publisher cmd_pub;
+bool rc_initialized = false;
 
 void joyCallback(const sensor_msgs::Joy& input) {
 	omnicopter_sim::RCInput msg;
 	msg.header = input.header;
-	msg.rollstick = ROLL_SCALE*input.axes[ROLL_STICK];
-	msg.pitchstick = PITCH_SCALE*input.axes[PITCH_STICK];
-	msg.throttlestick = THROTTLE_SCALE*input.axes[THROTTLE_STICK];
-	msg.yawstick = YAWRATE_SCALE*input.axes[YAWRATE_STICK];
-	rc_pub.publish(msg);
+	msg.rollstick = -input.axes[ROLL_STICK];
+	msg.pitchstick = -input.axes[PITCH_STICK];
+	msg.throttlestick = -input.axes[THROTTLE_STICK];
+	msg.yawstick = -input.axes[YAWRATE_STICK];
+	msg.arm = (bool)round(input.axes[ARM_CH]);
 
-
-	//Testing
-	/*geometry_msgs::Vector3Stamped cmd;
-	cmd.header = input.header;
-	cmd.vector.z = 10*msg.yawstick;
-	cmd.vector.x = 10*msg.rollstick;
-	cmd.vector.y = 10*msg.pitchstick;
-	cmd_pub.publish(cmd);
-	*/
+	int mode1 = round(input.axes[MODE_CH1]);
+	int mode2 = round(input.axes[MODE_CH2]);
+	if(mode1 == 1 && mode2 == 1){
+		msg.rc_mode.attitude_control_mode = omnicopter_sim::ControlMode::MODE_CONTROL_RP_ATT_Y_RATE;
+		msg.rc_mode.position_control_mode = omnicopter_sim::ControlMode::MODE_CONTROL_FORCE_BODY_UP;
+	}
+	else if(mode1 == 1 && mode2 == 0){
+		msg.rc_mode.attitude_control_mode = omnicopter_sim::ControlMode::MODE_CONTROL_YAWRATE;
+		msg.rc_mode.position_control_mode = omnicopter_sim::ControlMode::MODE_CONTROL_FORCE_BODY;
+	}
+	else if(mode1 == 1 && mode2 == -1){
+		msg.rc_mode.attitude_control_mode = omnicopter_sim::ControlMode::MODE_CONTROL_YAWRATE;
+		msg.rc_mode.position_control_mode = omnicopter_sim::ControlMode::MODE_CONTROL_FORCE_ENU;
+	}
+	else if(mode1 != 1){
+		msg.rc_mode.attitude_control_mode = omnicopter_sim::ControlMode::MODE_CONTROL_RATES;
+		msg.rc_mode.position_control_mode = omnicopter_sim::ControlMode::MODE_CONTROL_FORCE_BODY_UP;
+	}/*
+	else if(mode1 == 0 && mode2 == 0){
+		msg.rc_mode.attitude_control_mode = omnicopter_sim::ControlMode::MODE_CONTROL_YAWRATE;
+		msg.rc_mode.position_control_mode = omnicopter_sim::ControlMode::MODE_CONTROL_ALTHOLD_FORCE_BODY;
+	}
+	else if(mode1 == 0 && mode2 == -1){
+		msg.rc_mode.attitude_control_mode = omnicopter_sim::ControlMode::MODE_CONTROL_YAWRATE;
+		msg.rc_mode.position_control_mode = omnicopter_sim::ControlMode::MODE_CONTROL_ALTHOLD_FORCE_ENU;
+	}
+	else if(mode1 == -1){
+		msg.rc_mode.attitude_control_mode = omnicopter_sim::ControlMode::MODE_CONTROL_RATES;
+		msg.rc_mode.position_control_mode = omnicopter_sim::ControlMode::MODE_CONTROL_FORCE_ENU;
+	}*/
 	
 
-	omnicopter_sim::AttSp cmd;
-	cmd.type = omnicopter_sim::AttSp::SETPOINT_TYPE_RATES;
-	cmd.wx = 10*msg.rollstick;
-	cmd.wy = 10*msg.pitchstick;
-	cmd.wz = 10*msg.yawstick;
-	cmd_pub.publish(cmd);
+	if(rc_initialized){
+		rc_pub.publish(msg);
+	}
+	else{
+		if (msg.throttlestick < -0.9 && mode1 == 1 && mode1 == 1 && !msg.arm){
+			rc_initialized = true;
+		}
+	}
 	
-
-
-
 }
 
 int main(int argc, char **argv){
@@ -56,8 +81,6 @@ int main(int argc, char **argv){
 
 	ros::Subscriber joy_sub = nh.subscribe("joy", 1, joyCallback); 
 	rc_pub = nh.advertise<omnicopter_sim::RCInput>("rc_input",0);
-	//cmd_pub = nh.advertise<geometry_msgs::Vector3Stamped>("torque_sp",0); //Testing
-	cmd_pub = nh.advertise<omnicopter_sim::AttSp>("att_sp",1); //Testing
 
 	ros::spin();
 }
